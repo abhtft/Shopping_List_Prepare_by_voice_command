@@ -7,7 +7,9 @@ from dotenv import load_dotenv
 import nltk
 import re
 #import assemblyai as aai
-from text_analyzer_regex_openAI_excel import analyze_text, ShoppingItemParser
+
+
+from analyser import process_excel,ShoppingItemParser
 import pytz
 import openai
 import json
@@ -58,22 +60,45 @@ except Exception as e:
 # Initialize the shopping item parser
 parser = ShoppingItemParser()
 
-# Initialize OpenAI client
+# Initialize Azure OpenAI client
 try:
-    # Create custom HTTP client without proxies
+    # Get Azure OpenAI configuration from environment variables
+    azure_openai_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
+    azure_openai_api_key = os.getenv('AZURE_OPENAI_API_KEY')
+    azure_openai_api_version = os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
+    azure_openai_deployment_name = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME')
+    
+    # Validate required environment variables
+    if not azure_openai_endpoint:
+        raise ValueError("AZURE_OPENAI_ENDPOINT environment variable is required")
+    if not azure_openai_api_key:
+        raise ValueError("AZURE_OPENAI_API_KEY environment variable is required")
+    if not azure_openai_deployment_name:
+        raise ValueError("AZURE_OPENAI_DEPLOYMENT_NAME environment variable is required")
+    
+    # Ensure endpoint doesn't have trailing slash (Azure OpenAI client handles /v1 automatically)
+    endpoint = azure_openai_endpoint.rstrip('/')
+    
+    # Create custom HTTP client for Azure OpenAI (optional - AzureOpenAI handles most of this)
     http_client = httpx.Client(
-        base_url="https://api.openai.com/v1",
         timeout=60.0,
         follow_redirects=True
     )
     
-    openai_client = openai.OpenAI(
-        api_key=os.getenv('OPENAI_API_KEY'),
+    # Initialize Azure OpenAI client
+    openai_client = openai.AzureOpenAI(
+        api_key=azure_openai_api_key,
+        api_version=azure_openai_api_version,
+        azure_endpoint=endpoint,
         http_client=http_client
     )
-    print("✅ OpenAI client initialized successfully")
+    print("✅ Azure OpenAI client initialized successfully")
+    print(f"   Endpoint: {azure_openai_endpoint}")
+    print(f"   Deployment: {azure_openai_deployment_name}")
+    print(f"   API Version: {azure_openai_api_version}")
+    
 except Exception as e:
-    print(f"❌ Error initializing OpenAI client: {e}")
+    print(f"❌ Error initializing Azure OpenAI client: {e}")
     raise
 
 # Set up MongoDB Atlas connection
@@ -111,8 +136,8 @@ def analyze():
         if not text:
             return jsonify({'error': 'No text provided'}), 400
             
-        # Use our new text analyzer
-        result = analyze_text(text)
+        # Use the parser to analyze text
+        result = parser.analyze(text)
         return jsonify(result)
         
     except Exception as e:

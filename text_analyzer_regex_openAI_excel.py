@@ -19,6 +19,8 @@ http_client = httpx.Client(
     follow_redirects=True
 )
 
+
+
 # Set up OpenAI client
 client = openai.OpenAI(
     api_key=os.getenv('OPENAI_API_KEY'),
@@ -180,3 +182,4 @@ if __name__ == '__main__':
     print(analyze_text("Cereal brand: Morning Star, sugar check needed for 4 boxes, medium priority."))
     
     print("\nProcessing complete!")
+
